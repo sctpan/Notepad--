@@ -41,7 +41,7 @@ public class ReplaceDialog extends JDialog {
 
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				((Notepad) getOwner()).getSelectedTextTab().replace(now.getText());
+				((Notepad) getOwner()).getSelectedTextTab().replace(now.getText(),old.getText());
 			}
 		});
 		replaceAll.addActionListener(new ActionListener() {

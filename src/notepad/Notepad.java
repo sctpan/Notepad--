@@ -14,7 +14,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.text.SimpleDateFormat;
 
 
@@ -79,45 +82,147 @@ class TextTab extends JTextPane {
 	}
 
 	void onFindTextChange(String s) {
-		if (getSelectedText() == null)
-			findNext(s);
-		else if (getText().substring(getSelectionStart()).startsWith(s))
-			select(getSelectionStart(), s.length());
-		else
-			findNext(s);
+		enterfind(s);
 	}
 
-	void findNext(String s) {
-		int start = (getSelectedText() == null ? getCaretPosition() : getSelectionEnd()); 
-		int pos = getText().substring(start).indexOf(s);
-		if (pos == -1) {
-			pos = getText().substring(0, start).indexOf(s);
-			if (pos == -1)
-				return;
-		} else
-			pos += start;
-		select(pos, pos + s.length());
+	private ArrayList<Integer> indexOffind = new ArrayList<Integer>();
+	private ArrayList<Integer> indexOfenter = new ArrayList<Integer>();
+	private int indexOfnow=0;  
+
+	public void enterfind(String s) {
+		/**
+		 *查找算法思路：
+		 *首先通过正则表达式匹配需要查找的关键词，并将关键词在编辑器文本中的位置保存在数组中。以备以后查找使用。
+		 *但是在匹配过程中，由于换行符的存在，关键词的位置会出现偏移，因此需要将换行符的位置保存在一个数组中，
+		 *然后计算出相应的偏移量。
+		 * 
+		 * */
+			String mainstring = getText();
+			Pattern pattern = Pattern.compile(s);
+			Matcher matcher= pattern.matcher(mainstring);//利用正则表达式匹配要查找的关键词
+			
+			String pat = "\\n";
+			Pattern pattern1 = Pattern.compile(pat);
+			Matcher matcher1= pattern1.matcher(mainstring);//对换行符进行匹配
+			
+			if(!indexOfenter.isEmpty()){
+				indexOfenter.clear();
+			}
+			while(matcher1.find()){  //将换行符位置保存在数组中
+				indexOfenter.add(matcher1.start());
+			}
+			
+			indexOfenter.add(Integer.MAX_VALUE);
+			if(!indexOffind.isEmpty()){
+				indexOffind.clear();
+			}
+			while(matcher.find()){ //将关键词位置保存在数组中
+				indexOffind.add(matcher.start());
+			}
+			if(!indexOffind.isEmpty()){
+				int offset = 0;
+				for(int i=0;i<indexOfenter.size();i++)  //计算出相应的偏移量
+				{
+					if(indexOffind.get(0) < indexOfenter.get(i))
+					{
+						offset = i;
+						break;
+					}
+				}
+				select(indexOffind.get(0) -offset, indexOffind.get(0) + s.length()-offset);
+			}
+
+	}
+	
+	public void enterfind(String s,int a) {  //重载方法，用于替换功能
+		// TODO Auto-generated method stub
+			String mainstring = getText();
+			Pattern pattern = Pattern.compile(s);
+			Matcher matcher= pattern.matcher(mainstring);
+			
+			String pat = "\\n";
+			Pattern pattern1 = Pattern.compile(pat);
+			Matcher matcher1= pattern1.matcher(mainstring);
+			
+			if(!indexOfenter.isEmpty()){
+				indexOfenter.clear();
+			}
+			while(matcher1.find()){
+				indexOfenter.add(matcher1.start());
+			}
+			
+			indexOfenter.add(Integer.MAX_VALUE);
+			if(!indexOffind.isEmpty()){
+				indexOffind.clear();
+			}
+			while(matcher.find()){
+				indexOffind.add(matcher.start());
+			}
+			
+			indexOfnow = -1;
+
+	}
+	
+		void findNext(String s) { //查找下一个关键词
+		if(!indexOffind.isEmpty()){
+			indexOfnow = ++indexOfnow % indexOffind.size(); //关键词数组指针增加1
+			int startpos = indexOffind.get(indexOfnow);  //获得当前关键字的位置
+			int endpos = startpos + s.length();
+			int offset = 0;
+			for(int i=0;i<indexOfenter.size();i++)  //计算出相应偏移量
+			{
+				if(startpos < indexOfenter.get(i))
+				{
+					offset = i;
+					break;
+				}
+			}
+
+			select(startpos-offset,endpos-offset);		//选中关键字
+		}
 	}
 
 	void findPrevious(String s) {
-		int start = (getSelectedText() == null ? getCaretPosition() : getSelectionStart());
-		int pos = getText().substring(0, start).lastIndexOf(s);
-		if (pos == -1) {
-			pos = getText().substring(start).lastIndexOf(s);
-			if (pos == -1)
-				return;
-			else
-				pos += start;
+		if(!indexOffind.isEmpty()){
+			indexOfnow--; //关键词数组指针减少1
+			if(indexOfnow<0){
+				indexOfnow = indexOffind.size()-1;
+			}
+			int startpos = indexOffind.get(indexOfnow);//获得当前关键字的位置
+			int endpos = startpos + s.length();
+			int offset = 0;
+			for(int i=0;i<indexOfenter.size();i++) //计算出相应偏移量
+			{
+				if(startpos < indexOfenter.get(i))
+				{
+					offset = i;
+					break;
+				}
+			}
+				
+			select(startpos-offset, endpos-offset); //选中关键字
 		}
-		select(pos, pos + s.length());
 	}
 
-	void replace(String now) {
+	void replace(String now,String old) {
+		
 		if (getSelectedText() == null)
 			return;
+	
 		String s = getText();
-		int pos = getSelectionStart();
-		setText(s.substring(0, getSelectionStart()) + now + s.substring(getSelectionEnd()));
+		int pos = getSelectionStart();  //标出选中词的位置
+		int offset = 0;
+		for(int i=0;i<indexOfenter.size();i++)//计算出相应偏移量
+		{
+			if(pos < indexOfenter.get(i))
+			{
+				offset = i;
+				break;
+			}
+		}
+		setText(s.substring(0, getSelectionStart()+offset) + now + s.substring(getSelectionEnd()+offset));
+		//将选中的词替换
+		enterfind(old,0);//更新关键词数组
 		select(pos, pos + now.length());
 	}
 
@@ -169,9 +274,7 @@ class TextTab extends JTextPane {
 		}
 	}
 	
-	void delete() {
-		replace("");
-	}
+
 	
 
 }
@@ -230,8 +333,6 @@ public class Notepad extends JFrame {
 		Component pane = new JScrollPane(tab);
 		tabbedPane.addTab(name == null ? "file" + (tabbedPane.getComponentCount() +1): name, pane);
 		tabbedPane.setSelectedComponent(pane);
-		
-
 	}
 
 	boolean close() {

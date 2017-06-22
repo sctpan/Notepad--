@@ -30,11 +30,12 @@ public class FindDialog extends JDialog {
 		add(txt);
 		JPanel panel = new JPanel(new GridLayout(1, 2));
 		panel.add(next);
+		
 		panel.add(previous);
 		add(panel);
 		setLocationRelativeTo(father);
 		pack();
-
+		
 		next.addActionListener(new ActionListener() {
 
 			@Override
